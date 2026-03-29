@@ -34,11 +34,11 @@ function enable_context_menu_enqueue_editor_assets() {
 		true
 	);
 
-	// wp_enqueue_style(
-	// 	'enable-context-menu-editor-styles',
-	// 	plugins_url( '/build/index.css', __FILE__ ),
-	// 	array(),
-	// 	$asset_file['version']
-	// );
+	wp_enqueue_style(
+		'enable-context-menu-editor-styles',
+		plugins_url( '/build/index.css', __FILE__ ),
+		array(),
+		$asset_file['version']
+	);
 }
 add_action( 'enqueue_block_editor_assets', 'enable_context_menu_enqueue_editor_assets' );

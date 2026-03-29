@@ -24,9 +24,7 @@ const STYLE_ATTRS = [
 	'fontSize', 'layout', 'style',
 ];
 
-function ContextMenuPopover( { clientId, anchor, onClose } ) {
-	const [ isRenaming, setIsRenaming ] = useState( false );
-	const [ renameValue, setRenameValue ] = useState( '' );
+function ContextMenuPopover( { clientId, anchor, onClose, onRename } ) {
 
 	const { block, blockName, metadata, blockIndex, rootClientId, canRemove, canDuplicate, canRename } =
 		useSelect(
@@ -132,29 +130,17 @@ function ContextMenuPopover( { clientId, anchor, onClose } ) {
 
 	// ── Rename ──────────────────────────────────────────────────────────────
 	const openRename = useCallback( () => {
-		setRenameValue( metadata?.name || '' );
-		setIsRenaming( true );
-	}, [ metadata ] );
-
-	const handleRename = useCallback( () => {
-		updateBlockAttributes( [ clientId ], {
-			metadata: {
-				...metadata,
-				name: renameValue || undefined,
-			},
-		} );
-		setIsRenaming( false );
-		onClose();
-	}, [ clientId, metadata, renameValue, updateBlockAttributes, onClose ] );
+		onClose(); // close popover first, modal opens from HOC
+		onRename();
+	}, [ onClose, onRename ] );
 
 	return (
-		<>
-			<Popover
-				anchor={ anchor }
-				onClose={ onClose }
-				placement="bottom-start"
-				className="enable-context-menu__popover"
-			>
+		<Popover
+			anchor={ anchor }
+			onClose={ onClose }
+			placement="bottom-start"
+			className="enable-context-menu__popover"
+		>
 				<MenuGroup>
 					<MenuItem onClick={ handleCopy }>
 						{ __( 'Copy' ) }
@@ -191,48 +177,6 @@ function ContextMenuPopover( { clientId, anchor, onClose } ) {
 					</MenuGroup>
 				) }
 			</Popover>
-
-			{ isRenaming && (
-				<Modal
-					title={ __( 'Rename block' ) }
-					onRequestClose={ () => setIsRenaming( false ) }
-					size="small"
-				>
-					<form
-						onSubmit={ ( e ) => {
-							e.preventDefault();
-							handleRename();
-						} }
-					>
-						<VStack spacing="3">
-							<TextControl
-								__next40pxDefaultSize
-								label={ __( 'Name' ) }
-								value={ renameValue }
-								onChange={ setRenameValue }
-								autoFocus
-							/>
-							<HStack justify="right">
-								<Button
-									__next40pxDefaultSize
-									variant="tertiary"
-									onClick={ () => setIsRenaming( false ) }
-								>
-									{ __( 'Cancel' ) }
-								</Button>
-								<Button
-									__next40pxDefaultSize
-									variant="primary"
-									type="submit"
-								>
-									{ __( 'Save' ) }
-								</Button>
-							</HStack>
-						</VStack>
-					</form>
-				</Modal>
-			) }
-		</>
 	);
 }
 
@@ -243,7 +187,27 @@ const withContextMenu = createHigherOrderComponent(
 		return ( props ) => {
 			const { clientId } = props;
 			const [ anchorData, setAnchorData ] = useState( null );
+			const [ isRenaming, setIsRenaming ] = useState( false );
+			const [ renameValue, setRenameValue ] = useState( '' );
 			const { selectBlock } = useDispatch( blockEditorStore );
+			const { updateBlockAttributes } = useDispatch( blockEditorStore );
+
+			const { metadata } = useSelect(
+				( select ) => ( {
+					metadata: select( blockEditorStore ).getBlockAttributes( clientId )?.metadata,
+				} ),
+				[ clientId ]
+			);
+
+			const handleRename = useCallback( () => {
+				updateBlockAttributes( [ clientId ], {
+					metadata: {
+						...metadata,
+						name: renameValue || undefined,
+					},
+				} );
+				setIsRenaming( false );
+			}, [ clientId, metadata, renameValue, updateBlockAttributes ] );
 
 			const onContextMenu = useCallback(
 				( event ) => {
@@ -292,7 +256,51 @@ const withContextMenu = createHigherOrderComponent(
 							clientId={ clientId }
 							anchor={ popoverAnchor }
 							onClose={ () => setAnchorData( null ) }
+							onRename={ () => {
+								setRenameValue( metadata?.name || '' );
+								setIsRenaming( true );
+							} }
 						/>
+					) }
+					{ isRenaming && (
+						<Modal
+							title={ __( 'Rename block' ) }
+							onRequestClose={ () => setIsRenaming( false ) }
+							size="small"
+						>
+							<form
+								onSubmit={ ( e ) => {
+									e.preventDefault();
+									handleRename();
+								} }
+							>
+								<VStack spacing="3">
+									<TextControl
+										__next40pxDefaultSize
+										label={ __( 'Name' ) }
+										value={ renameValue }
+										onChange={ setRenameValue }
+										autoFocus
+									/>
+									<HStack justify="right">
+										<Button
+											__next40pxDefaultSize
+											variant="tertiary"
+											onClick={ () => setIsRenaming( false ) }
+										>
+											{ __( 'Cancel' ) }
+										</Button>
+										<Button
+											__next40pxDefaultSize
+											variant="primary"
+											type="submit"
+										>
+											{ __( 'Save' ) }
+										</Button>
+									</HStack>
+								</VStack>
+							</form>
+						</Modal>
 					) }
 				</>
 			);

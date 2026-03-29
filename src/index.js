@@ -28,16 +28,17 @@ function ContextMenuPopover( { clientId, anchor, onClose } ) {
 	const [ isRenaming, setIsRenaming ] = useState( false );
 	const [ renameValue, setRenameValue ] = useState( '' );
 
-	const { block, blockName, metadata, canRemove, canDuplicate, canRename } =
+	const { block, blockName, metadata, blockIndex, rootClientId, canRemove, canDuplicate, canRename } =
 		useSelect(
 			( select ) => {
 				const {
 					getBlock,
 					getBlockName,
 					getBlockAttributes,
+					getBlockIndex,
+					getBlockRootClientId,
 					canRemoveBlocks,
 					canInsertBlockType,
-					getBlockRootClientId,
 				} = select( blockEditorStore );
 
 				const _block = getBlock( clientId );
@@ -48,6 +49,8 @@ function ContextMenuPopover( { clientId, anchor, onClose } ) {
 					block: _block,
 					blockName: _blockName,
 					metadata: getBlockAttributes( clientId )?.metadata,
+					blockIndex: getBlockIndex( clientId ),
+					rootClientId,
 					canRemove: canRemoveBlocks( [ clientId ] ),
 					canDuplicate:
 						!! _block &&
@@ -76,13 +79,13 @@ function ContextMenuPopover( { clientId, anchor, onClose } ) {
 			const text = await navigator.clipboard.readText();
 			const blocks = parse( text );
 			if ( blocks.length ) {
-				insertBlocks( blocks );
+				insertBlocks( blocks, blockIndex + 1, rootClientId );
 			}
 		} catch ( e ) {
 			// Clipboard access denied — silently ignore.
 		}
 		onClose();
-	}, [ insertBlocks, onClose ] );
+	}, [ insertBlocks, blockIndex, rootClientId, onClose ] );
 
 	// ── Duplicate ───────────────────────────────────────────────────────────
 	const handleDuplicate = useCallback( async () => {

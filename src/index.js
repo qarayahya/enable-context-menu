@@ -15,6 +15,8 @@ import { useDispatch, useSelect } from '@wordpress/data';
 import { store as blockEditorStore } from '@wordpress/block-editor';
 import { serialize, parse, getBlockSupport } from '@wordpress/blocks';
 import { __ } from '@wordpress/i18n';
+import { store as keyboardShortcutsStore } from '@wordpress/keyboard-shortcuts';
+import { displayShortcut } from '@wordpress/keycodes';
 import './editor.scss';
 
 // Style attributes to transfer when copying/pasting styles.
@@ -63,6 +65,18 @@ function ContextMenuPopover( { clientId, anchor, onClose, onRename } ) {
 
 	const { removeBlocks, duplicateBlocks, updateBlockAttributes, insertBlocks } =
 		useDispatch( blockEditorStore );
+
+	const shortcuts = useSelect( ( select ) => {
+		const { getShortcutRepresentation } = select( keyboardShortcutsStore );
+		return {
+			copy:        getShortcutRepresentation( 'core/block-editor/copy' ),
+			paste:       displayShortcut.primary( 'v' ),
+			duplicate:   getShortcutRepresentation( 'core/block-editor/duplicate' ),
+			remove:      getShortcutRepresentation( 'core/block-editor/remove' ),
+			copyStyles:  getShortcutRepresentation( 'core/block-editor/copy-styles' ),
+			pasteStyles: getShortcutRepresentation( 'core/block-editor/paste-styles' ),
+		};
+	}, [] );
 
 	// ── Copy ────────────────────────────────────────────────────────────────
 	const handleCopy = useCallback( async () => {
@@ -128,6 +142,21 @@ function ContextMenuPopover( { clientId, anchor, onClose, onRename } ) {
 		onClose();
 	}, [ block, clientId, updateBlockAttributes, onClose ] );
 
+	// ── Reset Styles ────────────────────────────────────────────────────────
+	const handleResetStyles = useCallback( () => {
+		updateBlockAttributes( [ clientId ], {
+			backgroundColor: undefined,
+			textColor:        undefined,
+			gradient:         undefined,
+			borderColor:      undefined,
+			fontFamily:       undefined,
+			fontSize:         undefined,
+			textAlign:        undefined,
+			style:            undefined,
+		} );
+		onClose();
+	}, [ clientId, updateBlockAttributes, onClose ] );
+
 	// ── Rename ──────────────────────────────────────────────────────────────
 	const openRename = useCallback( () => {
 		onClose(); // close popover first, modal opens from HOC
@@ -142,24 +171,27 @@ function ContextMenuPopover( { clientId, anchor, onClose, onRename } ) {
 			className="enable-context-menu__popover"
 		>
 				<MenuGroup>
-					<MenuItem onClick={ handleCopy }>
+					<MenuItem shortcut={ shortcuts.copy } onClick={ handleCopy }>
 						{ __( 'Copy' ) }
 					</MenuItem>
-					<MenuItem onClick={ handlePaste }>
+					<MenuItem shortcut={ shortcuts.paste } onClick={ handlePaste }>
 						{ __( 'Paste' ) }
 					</MenuItem>
 					{ canDuplicate && (
-						<MenuItem onClick={ handleDuplicate }>
+						<MenuItem shortcut={ shortcuts.duplicate } onClick={ handleDuplicate }>
 							{ __( 'Duplicate' ) }
 						</MenuItem>
 					) }
 				</MenuGroup>
 				<MenuGroup>
-					<MenuItem onClick={ handleCopyStyles }>
+					<MenuItem shortcut={ shortcuts.copyStyles } onClick={ handleCopyStyles }>
 						{ __( 'Copy Styles' ) }
 					</MenuItem>
-					<MenuItem onClick={ handlePasteStyles }>
+					<MenuItem shortcut={ shortcuts.pasteStyles } onClick={ handlePasteStyles }>
 						{ __( 'Paste Styles' ) }
+					</MenuItem>
+					<MenuItem onClick={ handleResetStyles }>
+						{ __( 'Reset Styles' ) }
 					</MenuItem>
 				</MenuGroup>
 				{ canRename && (
@@ -171,7 +203,7 @@ function ContextMenuPopover( { clientId, anchor, onClose, onRename } ) {
 				) }
 				{ canRemove && (
 					<MenuGroup>
-						<MenuItem isDestructive onClick={ handleDelete }>
+						<MenuItem shortcut={ shortcuts.remove } isDestructive onClick={ handleDelete }>
 							{ __( 'Delete' ) }
 						</MenuItem>
 					</MenuGroup>
